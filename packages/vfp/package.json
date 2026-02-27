@@ -1,0 +1,50 @@
+{
+  "name": "@forge3/scanner-vfp",
+  "version": "0.1.0",
+  "description": "Free VFP9 legacy system scanner — inventory, complexity, security, and migration risk analysis",
+  "author": "Leon Gael LLC <jaco@leongael.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LeonGael/forge3-scanner",
+    "directory": "packages/vfp"
+  },
+  "homepage": "https://forge3.dev",
+  "keywords": [
+    "foxpro",
+    "vfp9",
+    "legacy",
+    "migration",
+    "scanner",
+    "static-analysis",
+    "security"
+  ],
+  "type": "module",
+  "bin": {
+    "forge3-scan": "./dist/index.js"
+  },
+  "main": "./dist/scanner.js",
+  "types": "./dist/scanner.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "glob": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
