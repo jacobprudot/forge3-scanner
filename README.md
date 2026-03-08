@@ -138,3 +138,10 @@ This scanner is a free automated tool. For a **full business analysis**, **risk 
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Disclaimer
+
+- **Local execution only.** The Forge3 Scanner runs entirely on your machine. No source code, data, or analysis results are transmitted to any external server. The generated JSON report contains only metadata (file counts, pattern matches, risk flags) — never actual source code.
+- **Authorization is your responsibility.** The user running this scanner is responsible for having proper authorization to analyze the target system. Forge3 / Leon Gael LLC is not responsible for the ownership, licensing, or intellectual property status of any system scanned.
+- **Not a security audit.** Security findings (CVEs, vulnerability patterns, security grades) are informational and based on automated pattern matching. This tool is not a substitute for a professional security audit or penetration test.
+- **Cost estimates are approximate.** Migration cost estimates are based on statistical patterns from similar projects. Actual costs depend on project-specific factors determined during a professional Assessment (Phase 2).
