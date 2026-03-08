@@ -7,7 +7,10 @@ import { analyzeInventory } from "../src/analyzers/inventory.js"
 import { analyzeComplexity } from "../src/analyzers/complexity.js"
 import { analyzeSecurity } from "../src/analyzers/security.js"
 import { analyzeRisk } from "../src/analyzers/risk.js"
-import { scan } from "../src/scanner.js"
+import { scan, universalScan, detectOnly } from "../src/scanner.js"
+import { detectTechnology } from "../src/detector.js"
+import { analyzeBasic } from "../src/basic-analyzer.js"
+import { generateProfileFromDeep, generateProfileFromBasic } from "../src/migration-profile.js"
 
 const FIXTURES = resolve(import.meta.dirname, "fixtures")
 
@@ -96,7 +99,7 @@ describe("Risk Analyzer", () => {
   })
 })
 
-describe("Full Scanner", () => {
+describe("Full Scanner (legacy API)", () => {
   it("produces a complete report", async () => {
     const report = await scan({ path: FIXTURES, format: "terminal" })
     assert.equal(report.technology, "vfp9")
@@ -104,5 +107,86 @@ describe("Full Scanner", () => {
     assert.ok(report.complexity.score > 0)
     assert.ok(report.security.findings.length > 0)
     assert.ok(report.risk.flags.length > 0)
+  })
+})
+
+describe("Technology Detector", () => {
+  it("detects VFP9 from fixture files", async () => {
+    const result = await detectTechnology(FIXTURES)
+    assert.equal(result.primary.technology, "vfp9", "should detect VFP9 as primary")
+    assert.ok(result.primary.confidence > 0, "should have non-zero confidence")
+    assert.ok(result.primary.fileCount > 0, "should have files")
+    assert.ok(result.primary.evidence.length > 0, "should have evidence")
+    assert.equal(result.analysisAvailable, true, "deep analysis should be available for VFP9")
+  })
+})
+
+describe("Basic Analyzer", () => {
+  it("produces a basic inventory", async () => {
+    const result = await analyzeBasic(FIXTURES, "unknown")
+    assert.ok(result.inventory.totalFiles > 0, "should find files")
+    assert.ok(result.inventory.fileCounts.length > 0, "should have file counts")
+    assert.equal(result.deepAnalysisAvailable, false, "should indicate no deep analysis")
+    assert.ok(result.message.length > 0, "should have a message")
+  })
+})
+
+describe("Migration Profile", () => {
+  it("generates profile from deep VFP scan", async () => {
+    const report = await scan({ path: FIXTURES, format: "terminal" })
+    const profile = generateProfileFromDeep(report)
+
+    assert.equal(profile.source.technology, "vfp9")
+    assert.ok(profile.source.complexity !== null, "should have complexity score")
+    assert.ok(profile.source.securityGrade !== null, "should have security grade")
+    assert.ok(profile.suggestedTarget.primary.includes(".NET"), "should suggest .NET for VFP9")
+    assert.equal(profile.suggestedTarget.database, "PostgreSQL")
+    assert.equal(profile.estimate.confidence, "high")
+    assert.ok(profile.skillsNeeded.length > 0, "should list skills needed")
+    assert.ok(profile.knowledgeGaps.length > 0, "should list knowledge gaps")
+  })
+
+  it("generates profile from basic analysis", async () => {
+    const basic = await analyzeBasic(FIXTURES, "oracle-forms")
+    const profile = generateProfileFromBasic(basic)
+
+    assert.equal(profile.source.technology, "oracle-forms")
+    assert.equal(profile.source.complexity, null, "no complexity for basic")
+    assert.equal(profile.source.securityGrade, null, "no security grade for basic")
+    assert.equal(profile.estimate.confidence, "low", "low confidence for basic")
+    assert.ok(profile.suggestedTarget.primary.includes("Next.js"), "should suggest Next.js for Oracle Forms")
+  })
+})
+
+describe("Universal Scanner", () => {
+  it("produces a universal scan report for VFP fixtures", async () => {
+    const report = await universalScan({ path: FIXTURES, format: "terminal" })
+
+    assert.ok(report.version, "should have version")
+    assert.ok(report.scannedAt, "should have timestamp")
+    assert.ok(report.rootPath, "should have root path")
+
+    // Detection
+    assert.equal(report.detection.primary.technology, "vfp9", "should detect VFP9")
+    assert.equal(report.detection.analysisAvailable, true)
+
+    // Deep analysis
+    assert.ok("complexity" in report.analysis, "should have deep analysis for VFP9")
+    const analysis = report.analysis as import("../src/types.js").ScanReport
+    assert.equal(analysis.technology, "vfp9")
+    assert.ok(analysis.inventory.totalFiles > 0)
+
+    // Profile
+    assert.ok(report.profile.suggestedTarget.primary, "should have target suggestion")
+    assert.ok(report.profile.estimate.migrationRange, "should have migration range")
+  })
+})
+
+describe("Detect Only", () => {
+  it("returns detection without analysis", async () => {
+    const result = await detectOnly(FIXTURES)
+    assert.equal(result.primary.technology, "vfp9")
+    assert.ok(result.primary.confidence > 0)
+    assert.ok(result.primary.evidence.length > 0)
   })
 })

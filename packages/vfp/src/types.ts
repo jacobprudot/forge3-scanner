@@ -102,7 +102,7 @@ export interface RiskResult {
   greenCount: number
 }
 
-/* ── Full Report ── */
+/* ── Full Report (VFP9 Deep Analysis) ── */
 
 export interface ScanReport {
   version: string
@@ -115,6 +115,81 @@ export interface ScanReport {
   risk: RiskResult
 }
 
+/* ── Technology Detection ── */
+
+export interface TechnologyDetection {
+  technology: string        // "vfp9" | "oracle-forms" | "vb6" | "delphi" | "cobol" | "powerbuilder" | "access" | "clipper" | "unknown"
+  confidence: number        // 0-1
+  evidence: string[]        // what files/patterns led to this detection
+  fileCount: number         // how many files of this tech were found
+}
+
+export interface DetectionResult {
+  rootPath: string
+  scannedAt: string
+  primary: TechnologyDetection          // the dominant technology
+  secondary: TechnologyDetection[]      // other technologies also detected
+  analysisAvailable: boolean           // true if deep analysis exists for primary
+}
+
+/* ── Basic Analysis (non-VFP technologies) ── */
+
+export interface BasicAnalysis {
+  technology: string
+  inventory: {
+    fileCounts: { extension: string; count: number; totalLines: number; totalSizeBytes: number }[]
+    totalFiles: number
+    totalLines: number
+    totalSizeBytes: number
+  }
+  deepAnalysisAvailable: false
+  message: string  // "Deep analysis for Oracle Forms coming soon. Contact forge3.dev for manual assessment."
+}
+
+/* ── Migration Profile ── */
+
+export interface MigrationProfile {
+  version: string
+  generatedAt: string
+  source: {
+    technology: string
+    complexity: number | null     // only for deep-analyzed tech
+    securityGrade: string | null  // only for deep-analyzed tech
+    riskSummary: { red: number; yellow: number; green: number } | null
+    inventory: {
+      totalFiles: number
+      totalLines: number
+      totalSizeBytes: number
+      tables: number
+      records: number
+    }
+  }
+  suggestedTarget: {
+    primary: string              // e.g. ".NET 8 / Blazor"
+    database: string             // e.g. "PostgreSQL"
+    reasoning: string            // why this target
+  }
+  estimate: {
+    assessmentRange: string      // "$2,000 — $5,000"
+    migrationRange: string       // "$15K — $80K"
+    timelineWeeks: string        // "6 — 12"
+    confidence: string           // "high" | "medium" | "low"
+  }
+  skillsNeeded: string[]          // what the agent team needs to know
+  knowledgeGaps: string[]         // what we don't know yet and need to research
+}
+
+/* ── Universal Scan Report ── */
+
+export interface UniversalScanReport {
+  version: string
+  scannedAt: string
+  rootPath: string
+  detection: DetectionResult
+  analysis: ScanReport | BasicAnalysis  // deep or basic depending on tech
+  profile: MigrationProfile
+}
+
 /* ── CLI Options ── */
 
 export type OutputFormat = "terminal" | "json" | "html"
@@ -123,4 +198,5 @@ export interface ScanOptions {
   path: string
   format: OutputFormat
   output?: string           // file path for saving report
+  detectOnly?: boolean      // just run detection without analysis
 }

@@ -1,34 +1,41 @@
 # Forge3 Scanner
 
-Free, open-source legacy system scanner by [Leon Gael LLC](https://forge3.dev).
+Free, open-source **universal legacy system scanner** by [Leon Gael LLC](https://forge3.dev).
 
-Scans legacy codebases and generates detailed reports on **inventory**, **complexity**, **security vulnerabilities**, and **migration risk** — without requiring an API key or AI. Pure static analysis.
+Auto-detects what legacy technology lives in any directory, then runs the appropriate analysis — deep for VFP9, basic inventory for others. Every scan generates a **migration profile** with target stack suggestions, cost estimates, and timeline.
 
 ## Supported Technologies
 
-| Technology | Package | Status |
-|---|---|---|
-| **VFP9** (Visual FoxPro 9) | [`@forge3/scanner-vfp`](packages/vfp) | ✅ Available |
-| Oracle PL/SQL | — | 🔜 Coming soon |
-| COBOL | — | 🔜 Coming soon |
-| VB6 | — | 🔜 Coming soon |
+| Technology | Detection | Analysis | Status |
+|---|---|---|---|
+| **VFP9** (Visual FoxPro 9) | File extensions + content patterns | Deep (complexity, security, risk) | ✅ Available |
+| **Oracle Forms** | .fmb, .fmx, .pll + PL/SQL patterns | Basic (inventory) | ✅ Detection + basic |
+| **VB6** | .vbp, .frm, .bas, .cls + VB6 headers | Basic (inventory) | ✅ Detection + basic |
+| **Delphi** | .pas, .dfm, .dpr, .dpk | Basic (inventory) | ✅ Detection + basic |
+| **COBOL** | .cbl, .cob, .cpy, .jcl | Basic (inventory) | ✅ Detection + basic |
+| **PowerBuilder** | .pbl, .pbt, .pbw, .srd | Basic (inventory) | ✅ Detection + basic |
+| **Access** | .mdb, .accdb, .mde, .accde | Basic (inventory) | ✅ Detection + basic |
+| **Clipper/Harbour** | .ch, .hbp + content disambiguation | Basic (inventory) | ✅ Detection + basic |
 
 ## Quick Start
 
 ```bash
 # Run directly with npx (no install needed)
-npx @forge3/scanner-vfp ./path/to/vfp/project
+npx @forge3/scanner-vfp ./path/to/legacy/project
 
 # Or install globally
 npm install -g @forge3/scanner-vfp
-forge3-scan ./path/to/vfp/project
+forge3-scan ./path/to/legacy/project
 ```
 
-## Output Formats
+## Commands
 
 ```bash
-# Colored terminal output (default)
+# Auto-detect technology and run full analysis + migration profile
 forge3-scan ./project
+
+# Just detect what technology is present (fast)
+forge3-scan ./project --detect-only
 
 # Machine-readable JSON
 forge3-scan ./project --format json
@@ -37,29 +44,43 @@ forge3-scan ./project --format json
 forge3-scan ./project --format html --output report.html
 ```
 
-## What It Scans
+## What You Get
+
+### 🔍 Technology Detection
+Point it at any directory. The scanner identifies VFP9, Oracle Forms, VB6, Delphi, COBOL, PowerBuilder, Access, and Clipper/Harbour — with confidence scores and evidence.
 
 ### 📋 Inventory
 Files, lines of code, tables, records, indexes, dependencies — a complete picture of what exists.
 
-### ⚡ Complexity Score (1-10)
+### ⚡ Complexity Score (1-10) — VFP9 only
 Detects patterns that make migration harder: macro substitution, SCATTER/GATHER, deep THISFORM nesting, ActiveX controls, DLL dependencies, and more.
 
-### 🔒 Security Analysis (Grade A-F)
+### 🔒 Security Analysis (Grade A-F) — VFP9 only
 Platform CVEs, hardcoded credentials, SQL injection patterns, unencrypted data, missing audit trails. Includes CVSS scores for known vulnerabilities.
 
-### ⚠️ Migration Risk Flags
+### ⚠️ Migration Risk Flags — VFP9 only
 Color-coded risk assessment:
-- 🔴 **Red** — High risk, requires manual intervention (ActiveX, DLLs, macros, General fields)
-- 🟡 **Yellow** — Moderate risk, needs refactoring (SCATTER/GATHER, SCAN loops, Memo fields)
-- 🟢 **Green** — Low risk, straightforward migration (clean code, standard data types)
+- 🔴 **Red** — High risk, requires manual intervention
+- 🟡 **Yellow** — Moderate risk, needs refactoring
+- 🟢 **Green** — Low risk, straightforward migration
+
+### 📊 Migration Profile — All technologies
+- **Suggested target stack** (e.g., .NET 8 / Blazor + PostgreSQL)
+- **Cost estimates** — assessment and migration ranges
+- **Timeline** — estimated weeks
+- **Skills needed** and **knowledge gaps**
 
 ## Sample Output
 
 ```
 ╔══════════════════════════════════════════════════╗
-║  FORGE3 SCANNER — VFP9 Legacy System Report     ║
+║  FORGE3 SCANNER — Legacy System Report           ║
 ╚══════════════════════════════════════════════════╝
+
+🔍 DETECTION
+   Technology: VFP9 (95% confidence)
+   Files:      142 detected
+   Analysis:   Deep (VFP9)
 
 📋 INVENTORY
    Source code:    34 .PRG files, 22,140 lines
@@ -70,13 +91,18 @@ Color-coded risk assessment:
 ⚡ COMPLEXITY SCORE: 6.8 / 10 [████████░░] DIFFICULT
 
 🔒 SECURITY SCORE: D
-   Platform: VFP9 EOL since 2015 — 0 patches in 11 years
 
 ⚠️  MIGRATION RISK FLAGS
    🔴 4 ActiveX controls
    🔴 5 programs use macro substitution
    🟡 15 programs use SCATTER/GATHER MEMVAR
    🟢 Standard DBF data types
+
+📊 MIGRATION PROFILE
+   Suggested target:  .NET 8 / Blazor + PostgreSQL
+   Assessment:  $5K — $7.5K
+   Migration:   $40K — $60K (high confidence)
+   Timeline:    8 — 12 weeks
 ```
 
 ## Development
@@ -90,7 +116,7 @@ cd forge3-scanner/packages/vfp
 npm install
 
 # Run in development
-npx tsx src/index.ts ./path/to/vfp/project
+npx tsx src/index.ts ./path/to/project
 
 # Run tests
 npm test

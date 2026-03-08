@@ -1,5 +1,5 @@
-import type { ScanReport } from "../types.js"
+import type { UniversalScanReport } from "../types.js"
 
-export function reportJson(report: ScanReport): string {
+export function reportJson(report: UniversalScanReport): string {
   return JSON.stringify(report, null, 2)
 }

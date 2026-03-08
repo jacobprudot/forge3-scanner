@@ -1,5 +1,5 @@
 import chalk from "chalk"
-import type { ScanReport } from "../types.js"
+import type { UniversalScanReport, ScanReport, BasicAnalysis, MigrationProfile } from "../types.js"
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -18,16 +18,55 @@ function progressBar(value: number, max: number, width: number = 10): string {
   return chalk.green("█".repeat(filled)) + chalk.gray("░".repeat(empty))
 }
 
-export function reportTerminal(report: ScanReport): string {
+/**
+ * Report a UniversalScanReport to terminal.
+ */
+export function reportTerminal(report: UniversalScanReport): string {
   const lines: string[] = []
-  const { inventory: inv, complexity: cx, security: sec, risk } = report
 
-  // Header
+  // Detection header
+  const { detection } = report
+  const confPct = Math.round(detection.primary.confidence * 100)
+  const confColor = confPct >= 70 ? chalk.green : confPct >= 40 ? chalk.yellow : chalk.red
+
   lines.push("")
   lines.push(chalk.bold.cyan("╔══════════════════════════════════════════════════╗"))
-  lines.push(chalk.bold.cyan("║") + chalk.bold.white("  FORGE3 SCANNER — VFP9 Legacy System Report     ") + chalk.bold.cyan("║"))
+  lines.push(chalk.bold.cyan("║") + chalk.bold.white("  FORGE3 SCANNER — Legacy System Report           ") + chalk.bold.cyan("║"))
   lines.push(chalk.bold.cyan("╚══════════════════════════════════════════════════╝"))
   lines.push("")
+  lines.push(chalk.bold.white("🔍 DETECTION"))
+  lines.push(`   Technology: ${chalk.bold.white(detection.primary.technology.toUpperCase())} ${confColor(`(${confPct}% confidence)`)}`)
+  lines.push(`   Files:      ${chalk.white(String(detection.primary.fileCount))} detected`)
+
+  if (detection.secondary.length > 0) {
+    const secStr = detection.secondary
+      .map((s) => `${s.technology} (${s.fileCount})`)
+      .join(", ")
+    lines.push(`   Also found: ${chalk.gray(secStr)}`)
+  }
+
+  lines.push(`   Analysis:   ${detection.analysisAvailable ? chalk.green("Deep (VFP9)") : chalk.yellow("Basic")}`)
+  lines.push("")
+
+  // Dispatch to deep or basic report
+  if (isDeepAnalysis(report.analysis)) {
+    renderDeepReport(lines, report.analysis)
+  } else {
+    renderBasicReport(lines, report.analysis)
+  }
+
+  // Migration profile
+  renderProfile(lines, report.profile)
+
+  return lines.join("\n")
+}
+
+function isDeepAnalysis(analysis: ScanReport | BasicAnalysis): analysis is ScanReport {
+  return "complexity" in analysis
+}
+
+function renderDeepReport(lines: string[], report: ScanReport): void {
+  const { inventory: inv, complexity: cx, security: sec, risk } = report
 
   // Inventory
   lines.push(chalk.bold.white("📋 INVENTORY"))
@@ -110,6 +149,51 @@ export function reportTerminal(report: ScanReport): string {
     lines.push(`   ${icon} ${flag.count} ${flag.category}${flag.description ? ` (${flag.description.split("—")[0].trim()})` : ""}`)
   }
   lines.push("")
+}
+
+function renderBasicReport(lines: string[], analysis: BasicAnalysis): void {
+  lines.push(chalk.bold.white("📋 INVENTORY (Basic Analysis)"))
+
+  const topExtensions = analysis.inventory.fileCounts.slice(0, 15)
+  for (const fc of topExtensions) {
+    const lineStr = fc.totalLines > 0 ? `, ${formatNumber(fc.totalLines)} lines` : ""
+    lines.push(`   .${fc.extension.toUpperCase().padEnd(8)} ${chalk.white(String(fc.count).padStart(5))} files, ${formatBytes(fc.totalSizeBytes).padStart(10)}${lineStr}`)
+  }
+
+  if (analysis.inventory.fileCounts.length > 15) {
+    lines.push(chalk.gray(`   ... and ${analysis.inventory.fileCounts.length - 15} more extensions`))
+  }
+
+  lines.push("")
+  lines.push(`   Total:    ${chalk.white(formatNumber(analysis.inventory.totalFiles))} files, ${chalk.white(formatNumber(analysis.inventory.totalLines))} lines, ${chalk.white(formatBytes(analysis.inventory.totalSizeBytes))}`)
+  lines.push("")
+
+  lines.push(chalk.yellow(`   ⚠  ${analysis.message}`))
+  lines.push("")
+}
+
+function renderProfile(lines: string[], profile: MigrationProfile): void {
+  lines.push(chalk.bold.white("📊 MIGRATION PROFILE"))
+  lines.push("")
+
+  lines.push(`   Suggested target:  ${chalk.bold.white(profile.suggestedTarget.primary)} + ${chalk.white(profile.suggestedTarget.database)}`)
+  lines.push(`   ${chalk.gray(profile.suggestedTarget.reasoning.slice(0, 100))}${profile.suggestedTarget.reasoning.length > 100 ? "..." : ""}`)
+  lines.push("")
+
+  const confColor = profile.estimate.confidence === "high" ? chalk.green :
+    profile.estimate.confidence === "low" ? chalk.yellow : chalk.white
+  lines.push(`   Assessment:  ${chalk.white(profile.estimate.assessmentRange)}`)
+  lines.push(`   Migration:   ${chalk.bold.white(profile.estimate.migrationRange)} ${confColor(`(${profile.estimate.confidence} confidence)`)}`)
+  lines.push(`   Timeline:    ${chalk.white(profile.estimate.timelineWeeks)} weeks`)
+  lines.push("")
+
+  if (profile.knowledgeGaps.length > 0) {
+    lines.push(chalk.gray("   Knowledge gaps:"))
+    for (const gap of profile.knowledgeGaps) {
+      lines.push(chalk.gray(`   • ${gap}`))
+    }
+    lines.push("")
+  }
 
   // Footer
   lines.push(chalk.gray("━".repeat(50)))
@@ -119,6 +203,4 @@ export function reportTerminal(report: ScanReport): string {
   lines.push(chalk.bold.cyan("→ Request Assessment at https://forge3.dev"))
   lines.push(chalk.gray("━".repeat(50)))
   lines.push("")
-
-  return lines.join("\n")
 }
